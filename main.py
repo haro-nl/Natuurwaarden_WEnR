@@ -5,6 +5,8 @@ Script for set B: per soortgroepen voor periodes voor uur en km hokken
 
 Hans Roelofsen, 18 december 2018 WEnR"""
 
+# Superceded by main_v2.py as of 6 feb 2019
+
 
 import os
 import datetime

@@ -1,4 +1,5 @@
-# fooling around to automate shp file export to image
+# Script for automatic export of a shapefile to png.
+# Hans Roelofsen, WEnR team B&B february 2019
 
 
 import pysal.esda.mapclassify as mc
@@ -8,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from nw import utils
 
-sys.path.extend(['D:\\projects_code\\NW_WEnR\\geopandas_master', 'D:/projects_code/NW_WEnR/geopandas_master'])
+sys.path.extend(['M:\\b_aux\\python\\clones\\geopandas_master', 'M:/b_aux/python/clones/geopandas_master'])
 import geopandas as gp
 
 # prov = gp.read_file(os.path.join(r'm:\a_Projects\Natuurwaarden\agpro\natuurwaarden\shp', 'provincies.shp'))
@@ -27,6 +28,7 @@ import geopandas as gp
 
 def to_png(gdf, col, upper_bin_lims, title, out_dir, out_name, background, background_cells):
 
+    # background images of Provincies - hardcoded.
     prov = gp.read_file(os.path.join(r'm:\a_Projects\Natuurwaarden\agpro\natuurwaarden\shp', 'provincies.shp'))
 
     fig = plt.figure(figsize=(8,10))
@@ -44,7 +46,6 @@ def to_png(gdf, col, upper_bin_lims, title, out_dir, out_name, background, backg
     gdf.plot(ax=ax, scheme='User_Defined', cmap='OrRd', column=col, legend=True, linewidth=0,
              legend_kwds={'loc':'upper left', 'fontsize':'small', 'frameon':False, 'title':'# soorten per hok'},
              classification_kwds={'bins':upper_bin_lims})
-
 
     plt.savefig(os.path.join(out_dir, out_name))
     plt.close

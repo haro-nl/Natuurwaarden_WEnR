@@ -8,21 +8,22 @@ from nw import utils
 from nw import export_shape
 
 # Constraints on NDFF observations
-hok = 'kmhok'
-min_area = 2500000 # 2500000 for km hokken! 1e9 for uurhokken
-nulsoort = 0
-groep = ['vaatplant']#['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna']
-periodes = ['N2003-2012', 'N2013-2018']
-beheertype = 'snl_vochtige_heide'#, 'snl_zwakbuf_ven', 'snl_zuur_hoogven', 'snl_droge_heide', 'snl_zandstuif', 'snl_hoogveen]
-beheertype_val = [0, 1]
+hok = 'kmhok'  # either uurhok, kmhok. TODO: Extent to duplohok, quartohok
+min_area = 2500000 # 2500000 for km hokken! 1e9 for uurhokken # TODO: autmoatic lookup depending on hoktype
+nulsoort = 0 # either 0 (nulsoorten are ignored) or 1 (nulsoorten are accepted)
+groep = ['vaatplant']  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna']
+periodes = ['N2003-2012', 'N2013-2018']  # start-end year inclusive!
+beheertype = 'snl_vochtige_heide'  # either one of: 'snl_vochtige_heide' 'snl_zwakbuf_ven', 'snl_zuur_hoogven',
+                                   # 'snl_droge_heide', 'snl_zandstuif', 'snl_hoogveen]
+beheertype_val = [0, 1]  # either [0,1] (alle beheertypen) or [1] (restrict selection to just *beheertype*
 
 # Contraints on cells
-heide_periode_in = 2012
-heide_treshold_in = 7.5  # 0 if all values are ok
+heide_periode_in = 2012  # reference year for heide presence in cells, either 1900 or 2012
+heide_treshold_in = 7.5  # % of cell in year constaining heide. 0 if all values are ok
 oz_groep_in = utils.get_soortgroep_afkorting(groep[0])
-oz05_treshold_in = 75  # 0 if all values are ok
-oz18_treshold_in = 75  # 0 if all values are ok
-plot_background = True
+oz05_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 1998-2007. 0 if all values are ok
+oz18_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 2008-2018. 0 if all values are ok
+plot_background = True  # Boolean, plot cells in output graph
 
 
 # out directory
@@ -73,6 +74,8 @@ for periode in periodes:
     export_shape.to_png(gdf=merged, col='sp_count', upper_bin_lims=utils.get_bins(bin_groep),
                         title=title_neat, out_dir=os.path.join(out_base_dir, 'png'),
                         out_name='{0}.png'.format(out_name), background=plot_background, background_cells=cells)
+
+    # TODO: log file as output with full database query.
 
     del ndff_sel
     del ndff_piv

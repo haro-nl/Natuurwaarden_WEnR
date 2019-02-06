@@ -8,8 +8,9 @@ import os
 import pandas as pd
 import numpy as np
 
-sys.path.extend(['D:\\projects_code\\NW_WEnR\\geopandas_master', 'D:/projects_code/NW_WEnR/geopandas_master'])
+sys.path.extend(['M:\\b_aux\\python\\clones\\geopandas_master', 'M:/b_aux/python/clones/geopandas_master'])
 import geopandas as gp
+
 
 def iftrue(x):
     if x == 1:
@@ -73,6 +74,7 @@ def try_get_sp_info(sp_name, sp_char, default, sp_info):
 
 
 def get_hab_cels(hab_type, cell_type, all):
+    # Function rendered obsolote 06 feb 2019
     return all.loc[(all[hab_type] == 1) &
                    (all['nulsoort'] == 1), cell_type].unique().tolist()
 
@@ -132,6 +134,7 @@ def get_uh_heide_ids(year, treshold):
 
 def get_kh_heide_ids(year, treshold):
     # returns list of uh IDs where heide coveregage exceeds *treshold* in *year*
+    # Function prob no longer required as of 06 feb 2019
     if year in (1900, 2012):
         dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\kmhok_heide.shp')
         return dat.loc[dat['heide{0}'.format(year)] > treshold, 'ID'].tolist()
@@ -144,7 +147,7 @@ def get_heide_gdf(hok, year, treshold):
     # assumes location of source shapefiles.
     # Hans Roelofsen, 09 january 2019
     #
-    # Retired 5 feb 2019
+    # Function retired 5 feb 2019
     if hok in ['uur', 'km']:
         dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\{0}hok_heide.shp'.format(hok))
         return dat.loc[dat['heide{0}'.format(year)] > treshold, :]
@@ -153,6 +156,7 @@ def get_heide_gdf(hok, year, treshold):
 
 
 def get_uh_gdf(heide_periode, heide_treshold):
+    # Function obsolote as of 6 feb 2019,
     dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\uurhok_heide.shp')
     return dat.loc[dat['heide{0}'.format(heide_periode)] > heide_treshold, :]
 
@@ -166,6 +170,7 @@ def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_perio
 
     if hok_type not in['uurhok', 'kmhok']:
         raise Exception('Hoktype must be in [uur, km], not {0}'.format(hok_type))
+    # TODO: extent to 500m and 250m hokken!
     if oz_taxgroup not in ['vog', 'vli', 'plnt', 'rep']:
         raise Exception('Taxgroup must be in [vog, vli, plnt, rep], not {0}'.format(oz_taxgroup))
     if any([x not in [0, 25, 50, 75, 100] for x in [oz05_treshold, oz18_treshold]]):
@@ -209,10 +214,12 @@ def get_bins(soortgroep):
 
 
 def get_ndff_full():
+    # function to return the full NDFF table
     return pd.read_csv(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data', 'ndff_b2_all.csv'))
 
 
 def get_soortgroep_afkorting(soortgroep):
+    # Translation between soortgroep name and soortgroep afkorting
     dict = {'vaatplant': 'plnt', 'broedvogel': 'vog', 'dagvlinder': 'vli', 'herpetofauna': 'rep'}
     try:
         return dict[soortgroep]
