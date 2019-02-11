@@ -13,21 +13,22 @@ min_area = 2500000 # 2500000 for km hokken! 1e9 for uurhokken # TODO: autmoatic 
 nulsoort = 0 # either 0 (nulsoorten are ignored) or 1 (nulsoorten are accepted)
 groep = ['vaatplant']  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna']
 periodes = ['N2003-2012', 'N2013-2018']  # start-end year inclusive!
-beheertype = 'snl_vochtige_heide'  # either one of: 'snl_vochtige_heide' 'snl_zwakbuf_ven', 'snl_zuur_hoogven',
+beheertype = 'snl_hoogveen'    # either one of: 'snl_vochtige_heide' 'snl_zwakbuf_ven', 'snl_zuur_hoogven',
                                    # 'snl_droge_heide', 'snl_zandstuif', 'snl_hoogveen]
-beheertype_val = [0, 1]  # either [0,1] (alle beheertypen) or [1] (restrict selection to just *beheertype*
+beheertype_val = [1]  # either [0,1] (alle beheertypen) or [1] (restrict selection to just *beheertype*
 
 # Contraints on cells
 heide_periode_in = 2012  # reference year for heide presence in cells, either 1900 or 2012
-heide_treshold_in = 7.5  # % of cell in year constaining heide. 0 if all values are ok
+heide_treshold_in = 1  # % of cell in year constaining heide. 0 if all values are ok
 oz_groep_in = utils.get_soortgroep_afkorting(groep[0])
 oz05_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 1998-2007. 0 if all values are ok
 oz18_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 2008-2018. 0 if all values are ok
-plot_background = True  # Boolean, plot cells in output graph
+plot_background = False  # Boolean, plot cells in output graph
+beheertype_in_titel = True
 
 
 # out directory
-out_base_dir = r'd:\NW_out_data\b_per_tax\20190206\part2b'
+out_base_dir = r'd:\NW_out_data\b_per_tax\20190207\p2b'
 
 # get raw ndff data and filter
 ndff = utils.get_ndff_full()
@@ -35,6 +36,7 @@ ndff = ndff.loc[(ndff['area'] < min_area) &
                 (ndff['nulsoort'] == nulsoort) &
                 (ndff['taxgroep'].isin(groep)) &
                 (ndff[beheertype].isin(beheertype_val)), :]
+        # TODO: nl_name.isin(alle soorten behorende bij groep or beheertype)
 
 # get requested cell type and narrow down
 cells = utils.get_hok_gdf(hok_type=hok, oz_taxgroup=oz_groep_in, oz05_treshold=oz05_treshold_in,
@@ -45,8 +47,12 @@ cells = utils.get_hok_gdf(hok_type=hok, oz_taxgroup=oz_groep_in, oz05_treshold=o
 
 for periode in periodes:
     # generate out file name with full info
+    if len(groep) > 1:
+        bin_groep = 'all'
+    else:
+        bin_groep = groep[0]
     out_name = '{0}_{1}_{2}_heide{3}-{4}_' \
-               'oz{5}05-{6}_oz{7}18-{8}_{9}-{10}'.format(hok, '-'.join(x for x in groep), periode, heide_periode_in,
+               'oz{5}05-{6}_oz{7}18-{8}_{9}-{10}'.format(hok, bin_groep, periode, heide_periode_in,
                                                          heide_treshold_in, oz_groep_in, oz05_treshold_in, oz_groep_in,
                                                          oz18_treshold_in, beheertype,
                                                          ''.join(str(val) for val in beheertype_val))
@@ -62,19 +68,23 @@ for periode in periodes:
     merged = pd.merge(cells, ndff_piv, how='inner', right_index=True, left_on='ID')
     merged.rename(columns={'nl_name':'sp_count'}, inplace=True)
 
-    # save to shp
-    merged.to_file(os.path.join(out_base_dir, 'shp', '{0}.shp'.format(out_name)))
 
-    # save to image
-    if len(groep) > 1:
-        bin_groep = 'all'
+    if not merged.empty:
+
+        print('{0} cells will be written to file for periode {1}'.format(merged.shape[0], periode))
+
+        # save to shp
+        merged.to_file(os.path.join(out_base_dir, 'shp', '{0}.shp'.format(out_name)))
+
+        # save to image
+        title_neat= '{0}_{1}_{2}'.format(hok, bin_groep, periode)
+        if beheertype_in_titel:
+            title_neat += '_{0}'.format(beheertype)
+        export_shape.to_png(gdf=merged, col='sp_count', upper_bin_lims=utils.get_bins(bin_groep),
+                            title=title_neat, out_dir=os.path.join(out_base_dir, 'png'),
+                            out_name='{0}.png'.format(out_name), background=plot_background, background_cells=cells)
     else:
-        bin_groep = groep[0]
-    title_neat= '{0}_{1}_{2}'.format(hok, bin_groep, periode)
-    export_shape.to_png(gdf=merged, col='sp_count', upper_bin_lims=utils.get_bins(bin_groep),
-                        title=title_neat, out_dir=os.path.join(out_base_dir, 'png'),
-                        out_name='{0}.png'.format(out_name), background=plot_background, background_cells=cells)
-
+        print('Empty dataframe produced for period {0}, bummer'.format(periode))
     # TODO: log file as output with full database query.
 
     del ndff_sel

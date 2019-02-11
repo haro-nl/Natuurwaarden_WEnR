@@ -125,6 +125,7 @@ def quartohok_id(xy):
 
 def get_uh_heide_ids(year, treshold):
     # returns list of uh IDs where heide coveregage exceeds *treshold* in *year*
+    # FUNCTION RETIRED!
     if year in (1900, 2012):
         dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\uurhok_heide.shp')
         return dat.loc[dat['heide{0}'.format(year)] > treshold, 'ID'].tolist()
@@ -225,3 +226,6 @@ def get_soortgroep_afkorting(soortgroep):
         return dict[soortgroep]
     except KeyError:
         raise Exception('Thats numberwang')
+
+
+
