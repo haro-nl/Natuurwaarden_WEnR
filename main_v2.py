@@ -10,12 +10,15 @@ from nw import export_shape
 # Constraints on NDFF observations
 hok = 'kmhok'  # either uurhok, kmhok. TODO: Extent to duplohok, quartohok
 min_area = 2500000 # 2500000 for km hokken! 1e9 for uurhokken # TODO: autmoatic lookup depending on hoktype
-nulsoort = 0 # either 0 (nulsoorten are ignored) or 1 (nulsoorten are accepted)
-groep = ['vaatplant']  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna']
+nulsoort = False # include nulsoorten: True or False
+groep = 'vaatplant'  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all']
 periodes = ['N2003-2012', 'N2013-2018']  # start-end year inclusive!
-beheertype = 'snl_hoogveen'    # either one of: 'snl_vochtige_heide' 'snl_zwakbuf_ven', 'snl_zuur_hoogven',
-                                   # 'snl_droge_heide', 'snl_zandstuif', 'snl_hoogveen]
+beheertype = 'all'    # either one of: 'snl_vochtige_heide' 'snl_zwakbuf_ven', 'snl_zuur_hoogven',
+                                   # 'snl_droge_heide', 'snl_zandstuif', 'snl_hoogveen, 'all']
 beheertype_val = [1]  # either [0,1] (alle beheertypen) or [1] (restrict selection to just *beheertype*
+
+sp_sel = set(utils.get_sp_info()[groep]['sp_nm']) & set(utils.get_sp_info()[beheertype]['sp_nm']) & set(utils.get_sp_info()['nulsoort'][nulsoort]['sp_nm'])
+
 
 # Contraints on cells
 heide_periode_in = 2012  # reference year for heide presence in cells, either 1900 or 2012
@@ -33,10 +36,11 @@ out_base_dir = r'd:\NW_out_data\b_per_tax\20190207\p2b'
 # get raw ndff data and filter
 ndff = utils.get_ndff_full()
 ndff = ndff.loc[(ndff['area'] < min_area) &
-                (ndff['nulsoort'] == nulsoort) &
-                (ndff['taxgroep'].isin(groep)) &
-                (ndff[beheertype].isin(beheertype_val)), :]
-        # TODO: nl_name.isin(alle soorten behorende bij groep or beheertype)
+                (ndff['nl_name'].isin(sp_sel)), :]  #dit zou voldoende moeten zijn!!!!!11!!1112!@!!!@!!|214
+                # (ndff['nulsoort'] == nulsoort) &
+                # (ndff['taxgroep'].isin(groep)) &
+                # (ndff[beheertype].isin(beheertype_val)), :]
+        # TODO: nl_name.isin(alle soorten behorende bij groep or beheertype or nulsoort)
 
 # get requested cell type and narrow down
 cells = utils.get_hok_gdf(hok_type=hok, oz_taxgroup=oz_groep_in, oz05_treshold=oz05_treshold_in,
