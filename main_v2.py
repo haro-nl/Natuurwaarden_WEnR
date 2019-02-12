@@ -9,13 +9,12 @@ from nw import export_shape
 
 # Constraints on NDFF observations
 hok = 'kmhok'  # either uurhok, kmhok. TODO: Extent to duplohok, quartohok
-min_area = 2500000 # 2500000 for km hokken! 1e9 for uurhokken # TODO: autmoatic lookup depending on hoktype
+min_area = {'kmhok':2500000, 'uurhok':1e9}[hok] # 2500000 for km hokken! 1e9 for uurhokken
 nulsoort = False # include nulsoorten: True or False
 groep = 'vaatplant'  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all']
 periodes = ['N2003-2012', 'N2013-2018']  # start-end year inclusive!
 beheertype = 'all'    # either one of: 'snl_vochtige_heide' 'snl_zwakbuf_ven', 'snl_zuur_hoogven',
                                    # 'snl_droge_heide', 'snl_zandstuif', 'snl_hoogveen, 'all']
-beheertype_val = [1]  # either [0,1] (alle beheertypen) or [1] (restrict selection to just *beheertype*
 
 sp_sel = set(utils.get_sp_info()[groep]['sp_nm']) & set(utils.get_sp_info()[beheertype]['sp_nm']) & set(utils.get_sp_info()['nulsoort'][nulsoort]['sp_nm'])
 

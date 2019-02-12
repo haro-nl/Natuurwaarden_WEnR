@@ -5,6 +5,7 @@
 import pysal.esda.mapclassify as mc
 import os
 import sys
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
 from nw import utils
@@ -67,9 +68,14 @@ def diff_to_png(gdf, title, col, cats, background, background_cells, out_dir, ou
     if background:
         background_cells.plot(ax=ax, color='#15b01a', linewidth=0)
 
+    legend_patches = []
+    for cat, color in cats.items():
+        legend_patches.append(mpatches.Patch(label=cat, edgecolor='black', facecolor=color))
+
     for cat, color in cats.items():
         gdf.loc[gdf[col] == cat, :].plot(ax=ax, column=col, linewidth=0, color=color)
 
+    plt.legend(handles=legend_patches, loc='upper left', fontsize='small', frameon=False, title='Toe/Afname')
     plt.savefig(os.path.join(out_dir, out_name))
     plt.close
 

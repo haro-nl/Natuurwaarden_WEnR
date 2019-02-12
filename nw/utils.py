@@ -34,9 +34,9 @@ def get_sp_info():
 
     # Nulsoorten
     out['nulsoort'] = {True:{'sp_nm':splist.loc[splist['nulsoort'] == 1, 'sp_nm'].tolist(),
-                             'sp_nm':splist.loc[splist['nulsoort'] == 1, 'sp_nr'].tolist()},
-                       False:{'sp_nm':splist.loc[splist['nulsoort'] == 0, 'sp_nm'].tolist(),
-                              'sp_nm':splist.loc[splist['nulsoort'] == 0, 'sp_nr'].tolist()}}
+                             'sp_nr':splist.loc[splist['nulsoort'] == 1, 'sp_nr'].tolist()},
+                       False:{'sp_nm':splist.loc[splist['nulsoort'] != 1, 'sp_nm'].tolist(),
+                              'sp_nr':splist.loc[splist['nulsoort'] != 1, 'sp_nr'].tolist()}}
 
     # species names and numbers for each taxonomic group
     tax_groups = splist['tax_groep'].unique().tolist()
@@ -46,11 +46,13 @@ def get_sp_info():
 
     # species names and numbers for each subhabitat
     habtypes = [x for x in list(splist) if 'SNL_' in x]
+
     for hab in habtypes:
-        out[hab] = {'sp_nm': splist.loc[splist[hab] == 1, 'sp_nm'].tolist(),
+        out[hab.lower()] = {'sp_nm': splist.loc[splist[hab] == 1, 'sp_nm'].tolist(),
                     'sp_nr': splist.loc[splist[hab] == 1, 'sp_nr'].tolist()}
 
     # species names and numbers for NW, LPI, SNL
+    # TODO 12-02-2019: dit net zo doen als voor Nulsoorten
     for ding in ['NW', 'LPI', 'SNL']:
         out[ding] = {'sp_nm': splist.loc[splist[ding] == 1, 'sp_nm'].tolist(),
                      'sp_nr': splist.loc[splist[ding] == 1, 'sp_nr'].tolist()}
