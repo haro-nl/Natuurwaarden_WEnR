@@ -14,7 +14,7 @@ nulsoort = False # include nulsoorten: True or False
 groep = 'vaatplant'  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all']
 periode_1 = 'N2003-2012'  # start-end year inclusive!
 periode_2 = 'N2013-2018'  # start-end year inclusive!
-beheertype = 'snl_hoogveen'  # either one of: 'snl_vochtige_heide' 'snl_zwakgebufferd_ven', 'snl_zuur_ven_of_hoogveenven',  'snl_droge_heide',
+beheertype = 'all'  # either one of: 'snl_vochtige_heide' 'snl_zwakgebufferd_ven', 'snl_zuur_ven_of_hoogveenven',  'snl_droge_heide',
                     # 'snl_zandverstuiving', 'snl_hoogveen, 'all'
 sp_info = utils.get_sp_info()
 sp_sel = set(sp_info[groep]['sp_nm']) & set(sp_info[beheertype]['sp_nm']) & set(sp_info['nulsoort'][nulsoort]['sp_nm'])
