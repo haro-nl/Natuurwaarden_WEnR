@@ -27,7 +27,7 @@ import geopandas as gp
 # plt.close()
 
 
-def to_png(gdf, col, upper_bin_lims, title, out_dir, out_name, background, background_cells):
+def to_png(gdf, col, upper_bin_lims, title, comment, out_dir, out_name, background, background_cells):
 
     # background images of Provincies - hardcoded.
     prov = gp.read_file(os.path.join(r'm:\a_Projects\Natuurwaarden\agpro\natuurwaarden\shp', 'provincies.shp'))
@@ -37,6 +37,7 @@ def to_png(gdf, col, upper_bin_lims, title, out_dir, out_name, background, backg
     ax.set_aspect('equal')
     plt.tick_params(axis='both', labelbottom=False, labeltop=False, labelleft=False, labelright=False)
     ax.set(title=title)
+
     ax.set(xlim=[0, 300000], ylim=[300000, 650000])
 
     prov.plot(ax=ax, color='lightgrey')
@@ -48,11 +49,13 @@ def to_png(gdf, col, upper_bin_lims, title, out_dir, out_name, background, backg
              legend_kwds={'loc':'upper left', 'fontsize':'small', 'frameon':False, 'title':'# soorten per hok'},
              classification_kwds={'bins':upper_bin_lims})
 
+    ax.text(1000, 301000, comment, ha='left', va='center', size=6)
+
     plt.savefig(os.path.join(out_dir, out_name))
     plt.close
 
 
-def diff_to_png(gdf, title, col, cats, background, background_cells, out_dir, out_name):
+def diff_to_png(gdf, title, comment, col, cats, background, background_cells, out_dir, out_name):
     # background images of Provincies - hardcoded.
     prov = gp.read_file(os.path.join(r'm:\a_Projects\Natuurwaarden\agpro\natuurwaarden\shp', 'provincies.shp'))
 
@@ -74,6 +77,8 @@ def diff_to_png(gdf, title, col, cats, background, background_cells, out_dir, ou
 
     for cat, color in cats.items():
         gdf.loc[gdf[col] == cat, :].plot(ax=ax, column=col, linewidth=0, color=color)
+
+    ax.text(1000, 301000, comment, ha='left', va='center', size=6)
 
     plt.legend(handles=legend_patches, loc='upper left', fontsize='small', frameon=False, title='Toe/Afname')
     plt.savefig(os.path.join(out_dir, out_name))

@@ -2,10 +2,13 @@
 Hans Roelofsen, 3 December 2018"""
 
 import os
-from geopandas_master import geopandas as gp
 import datetime
-import numpy as np
 import pickle
+import pandas as pd
+import sys
+
+sys.path.extend(['M:\\b_aux\\python\\clones\\geopandas_master', 'M:/b_aux/python/clones/geopandas_master'])
+import geopandas as gp
 
 from nw import utils
 
@@ -38,20 +41,21 @@ def process_ndff(dir_in, shp_in):
 
     # drop columns
     ndff = ndff.drop([field for field in list(ndff) if field not in ['nl_name', 'sci_name', 'centrumx', 'centrumy',
-                                                                     'area', 'loc_type', 'periodstop', 'broedcode']], 1)
-
-    # read species info
-    sp_info = utils.get_sp_info()
+                                                                     'area', 'loc_type', 'periodstop', 'broedcode',
+                                                                     'protocol', 'broedcode']], 1)
 
     # convert species names to lowercase just to be sure
     ndff['nl_name'] = ndff['nl_name'].str.lower()
 
     # Add bunch of attributes
     ndff['kmhok'] = ndff.apply(lambda row: utils.kh_id((row['centrumx'], row['centrumy'])), axis=1)
-    ndff['uurhok'] = ndff.apply(lambda row: utils.uh_id(row['centrumx'], row['centrumy']), axis=1)
+    ndff['uurhok'] = ndff.apply(lambda row: utils.uh_id((row['centrumx'], row['centrumy'])), axis=1)
     ndff['duplohok'] = ndff.apply(lambda row: utils.duplohok_id((row['centrumx'], row['centrumy'])), axis=1)
     ndff['quartohok'] = ndff.apply(lambda row: utils.quartohok_id((row['centrumx'], row['centrumy'])), axis=1)
     ndff['year'] = ndff.apply(lambda row: date_to_year(row['periodstop']), axis=1)
+
+    '''
+    This is no longer needed, as these specs are filtered via the species list. 
     ndff['lpi'] = ndff.apply(lambda row: utils.try_get_sp_info(row['nl_name'], 'LPI', 0, sp_info),axis=1)
     ndff['snl'] = ndff.apply(lambda row: utils.try_get_sp_info(row['nl_name'], 'SNL', 0, sp_info),axis=1)
     ndff['taxgroep'] = ndff.apply(lambda row: utils.try_get_sp_info(row['nl_name'], 'tax_groep', 'unknown', sp_info),axis=1)
@@ -62,7 +66,7 @@ def process_ndff(dir_in, shp_in):
     ndff['snl_droge_heide'] = ndff.apply(lambda row: thing_is_in_group(row['nl_name'], sp_info['SNL_Droge_heide']['sp_nm']), axis=1)
     ndff['snl_zandstuif'] = ndff.apply(lambda row: thing_is_in_group(row['nl_name'], sp_info['SNL_Zandverstuiving']['sp_nm']), axis=1)
     ndff['nulsoort'] = ndff.apply(lambda row: thing_is_in_group(row['nl_name'], sp_info['nulsoort']['sp_nm']), axis=1)
-
+    '''
     return ndff
 
 
@@ -70,10 +74,21 @@ if __name__ == "__main__":
 
     shp_list = ['def_planten.shp', 'def_broedvogels.shp', 'def_dagvlinders.shp', 'def_reptielen.shp']
 
+    pkl_dir = r'd:\temppickle'
     for shp in shp_list:
         out_temp = process_ndff(r'd:\NW_src_data\b2', shp)
         pickle_name = os.path.splitext(shp)[0] + datetime.datetime.now().strftime("%Y%m%d_%H%M") + '.pkl'
-        with open(os.path.join(r'd:\temppickle', pickle_name), 'wb') as handle:
+        with open(os.path.join(pkl_dir, pickle_name), 'wb') as handle:
             pickle.dump(out_temp, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    # ndff_out = pd.concat([ndff for ndff in ndff_holder])
-    # ndff_out.to_csv(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data', 'ndff_all.csv'), index=False)
+
+    pkl_list = ['def_reptielen20190214_1057.pkl', 'def_dagvlinders20190214_1055.pkl', 'def_broedvogels20190214_1051.pkl',
+                'def_planten20190214_1044.pkl']
+
+    ndff_holder = []
+    for pkl in pkl_list:
+        with open(os.path.join(pkl_dir, pkl), 'rb') as handle:
+            pikl = pickle.load(handle)
+            ndff_holder.append(pikl)
+
+    ndff_out = pd.concat([ndff for ndff in ndff_holder])
+    ndff_out.to_csv(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data', 'ndff_all.csv'), index=False)

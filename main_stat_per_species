@@ -7,42 +7,53 @@ import pandas as pd
 from nw import utils
 from nw import export_shape
 
-# get ndff data and filter to selected species and selected periods
-ndff = utils.get_ndff_full()
-
 # get all species information
 sp_info = utils.get_sp_info()
 
 # Constraints on NDFF observations
 hok = 'kmhok'  # either uurhok, kmhok. TODO: Extent to duplohok, quartohok
 min_area = {'kmhok':2500000, 'uurhok':1e9}[hok] # 2500000 for km hokken! 1e9 for uurhokken
+protocol_excl = ['12.205 Monitoring Beoordeling Natuurkwaliteit EHS - N2000 (SNL-2014)']
 nulsoort = False # include nulsoorten: True or False
-groep = 'vaatplant'  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all']
-periode_1 = 'N2003-2012'  # start-end year inclusive!
+groep = 'all'  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all']
+beheertypes = 'all'  # either one of: 'snl_vochtige_heide' 'snl_zwakgebufferd_ven', 'snl_zuur_ven_of_hoogveenven',  'snl_droge_heide', 'snl_zandverstuiving', 'snl_hoogveen, 'all'
+periode_1 = 'N1999-2012'  # start-end year inclusive!
 periode_2 = 'N2013-2018'  # start-end year inclusive!
-beheertype = 'all'
-            # either one of: 'snl_vochtige_heide' 'snl_zwakgebufferd_ven', 'snl_zuur_ven_of_hoogveenven',  'snl_droge_heide',
-                    # 'snl_zandverstuiving', 'snl_hoogveen, 'all'
 
-sp_sel = set(sp_info[groep]['sp_nm']) & set(sp_info[beheertype]['sp_nm']) & set(sp_info['nulsoort'][nulsoort]['sp_nm'])
+type = beheertypes
+# get raw ndff data and filter on observation specs, such as area, protocol.
+# also narrow down to species from the selected species (ie. soortgroep, SNL subtype, nulsoort)
+sp_sel = set(sp_info[groep]['sp_nm']) & set(sp_info[type]['sp_nm']) & set(sp_info['nulsoort'][nulsoort]['sp_nm'])
+quer = 'protocol not in {0} & area < {1} & nl_name in {2}'.format(protocol_excl, min_area, list(sp_sel))
+ndff = utils.get_ndff_full()
+ndff_sel = ndff.query(quer)
 
 # Contraints on cells
 heide_periode_in = 2012  # reference year for heide presence in cells, either 1900 or 2012
-heide_treshold_in = 1  # % of cell in year constaining heide. 0 if all values are ok
+heide_treshold_in = 0  # % of cell in year constaining heide. 0 if all values are ok
 oz_groep_in = utils.get_soortgroep_afkorting(groep)
-oz05_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 1998-2007. 0 if all values are ok
-oz18_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 2008-2018. 0 if all values are ok
+oz05_treshold_in = 0  # drempelwaarde voor onderzoeksvolledigheid periode 1998-2007. 0 if all values are ok
+oz18_treshold_in = 0  # drempelwaarde voor onderzoeksvolledigheid periode 2008-2018. 0 if all values are ok
+sbb_area_treshold = 1  # drempelwaarde voor SBB areaaal in de cell. Evaluation is >=. 0 if all values are ok
 plot_background = False  # Boolean, plot cells in output graph
 beheertype_in_titel = True
 
 # get requested cell type and narrow down
 cells = utils.get_hok_gdf(hok_type=hok, oz_taxgroup=oz_groep_in, oz05_treshold=oz05_treshold_in,
                           oz18_treshold=oz18_treshold_in, heide_periode=heide_periode_in,
-                          heide_treshold=heide_treshold_in)
+                          heide_treshold=heide_treshold_in, sbb_treshold=sbb_area_treshold)
+print(cells.shape)
 
-# filter NDFF
-ndff_sel = ndff.loc[(ndff['area'] < min_area) & (ndff['nl_name'].isin(sp_sel)), :]
+# print ndff and cell query as file header
+# add 'periode' column to NDFF based on year
+# use 'periode' columsn argument in the pivot table
+# reducte ndff to hokken remaining in the cell query
+# pivot on hok as index
 
+
+ndff_px = ndff_sel.loc[ndff_sel.year.isin([j for j in range(1999, 2019)]), :]
+px_piv = pd.pivot_table(ndff_px, values=hok, index='nl_name', aggfunc=lambda x: len(x.unique()))
+print(px_piv.shape)
 
 ndff_p1 = ndff_sel.loc[ndff['year'].isin([j for j in range(int(periode_1[1:5]), int(periode_1[6:10])+1)]), :]
 ndff_p2 = ndff_sel.loc[ndff['year'].isin([j for j in range(int(periode_2[1:5]), int(periode_2[6:10])+1)]), :]
@@ -55,6 +66,6 @@ p2_piv = pd.DataFrame(pd.pivot_table(ndff_p2, values=hok, index='nl_name', aggfu
 
 # merge and keep all species
 merged = pd.merge(left=p1_piv, right=p2_piv, how='outer', right_index=True, left_index=True)
-out_name = '{0}_count_{1}_{2}'.format(hok, beheertype, groep)
-out_base_dir = r'd:\NW_out_data\b_per_tax\20190212'
+out_name = '{0}_count_{1}_{2}'.format(hok, type, groep)
+out_base_dir = r'd:\NW_out_data\20190218\minus_12-205'
 merged.to_csv(os.path.join(out_base_dir, 'tabs', out_name + '.csv'), sep=',')

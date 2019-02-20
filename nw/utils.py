@@ -174,7 +174,7 @@ def get_uh_gdf(heide_periode, heide_treshold):
     return dat.loc[dat['heide{0}'.format(heide_periode)] > heide_treshold, :]
 
 
-def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_periode, heide_treshold):
+def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_periode, heide_treshold, sbb_treshold):
     # return geodataframe of kh cells where completeness > treshold for period and tax group
     # period must be in: ['05', '18']
     # taxgroup must be in: ['vog', 'vli', 'plnt', 'rep']
@@ -184,7 +184,7 @@ def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_perio
     if hok_type not in['uurhok', 'kmhok']:
         raise Exception('Hoktype must be in [uur, km], not {0}'.format(hok_type))
     # TODO: extent to 500m and 250m hokken!
-    if oz_taxgroup not in ['vog', 'vli', 'plnt', 'rep']:
+    if oz_taxgroup not in ['vog', 'vli', 'plnt', 'rep', 'all']:
         raise Exception('Taxgroup must be in [vog, vli, plnt, rep], not {0}'.format(oz_taxgroup))
     if any([x not in [0, 25, 50, 75, 100] for x in [oz05_treshold, oz18_treshold]]):
         raise Exception('Valid tresholds are 25, 50, 75 and 100, not {0} or {1}'.format(oz05_treshold, oz18_treshold))
@@ -196,7 +196,13 @@ def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_perio
     heide_att = 'heide{0}'.format(heide_periode)
     return dat.loc[(dat[oz05_att] >= oz05_treshold) &
                    (dat[oz18_att] >= oz18_treshold) &
-                   (dat[heide_att] >= heide_treshold), :]
+                   (dat[heide_att] >= heide_treshold) &
+                   (dat['sbb_aream2'] >= sbb_treshold), :]
+
+
+def get_hok_gdf_simple(hok_type):
+    return  gp.read_file(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data\uh_kh_compleet',
+                                      '{0}_compleet.shp'.format(hok_type)))
 
 
 def get_vlinder_250m_completeness(treshold):
@@ -228,16 +234,27 @@ def get_bins(soortgroep):
 
 def get_ndff_full():
     # function to return the full NDFF table
-    return pd.read_csv(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data', 'ndff_b2_all.csv'))
+    return pd.read_csv(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data', 'ndff_b2_all_v2.csv'))
 
 
 def get_soortgroep_afkorting(soortgroep):
     # Translation between soortgroep name and soortgroep afkorting
-    dict = {'vaatplant': 'plnt', 'broedvogel': 'vog', 'dagvlinder': 'vli', 'herpetofauna': 'rep'}
+    dict = {'vaatplant': 'plnt', 'broedvogel': 'vog', 'dagvlinder': 'vli', 'herpetofauna': 'rep', 'all':'all'}
     try:
         return dict[soortgroep]
     except KeyError:
         raise Exception('Thats numberwang')
 
 
+def classifier(x, categories, labels):
+    # returns corresponding label for numerical category containing x
+    try:
+        return labels[[x in range for range in categories].index(True)]
+    except ValueError:
+        raise Exception('Sorry, requested value {0} is not found in any of the ranges.'.format(x))
 
+def ranges_to_years(l):
+    # convert list of ranges to flat list of numbers
+    # e.g.     l= [range(2007, 2013), range(2013, 2019)]
+    # returns  [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]
+    return [item for sublist in [[x for x in range] for range in l] for item in sublist]

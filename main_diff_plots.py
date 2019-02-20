@@ -10,14 +10,22 @@ from nw import export_shape
 # Constraints on NDFF observations
 hok = 'kmhok'  # either uurhok, kmhok. TODO: Extent to duplohok, quartohok
 min_area = {'kmhok':2500000, 'uurhok':1e9}[hok] # 2500000 for km hokken! 1e9 for uurhokken
+protocol_excl = ['12.205 Monitoring Beoordeling Natuurkwaliteit EHS - N2000 (SNL-2014)']
 nulsoort = False # include nulsoorten: True or False
 groep = 'vaatplant'  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all']
 periode_1 = 'N2003-2012'  # start-end year inclusive!
 periode_2 = 'N2013-2018'  # start-end year inclusive!
-beheertype = 'all'  # either one of: 'snl_vochtige_heide' 'snl_zwakgebufferd_ven', 'snl_zuur_ven_of_hoogveenven',  'snl_droge_heide',
+beheertype = 'snl_hoogveen'  # either one of: 'snl_vochtige_heide' 'snl_zwakgebufferd_ven', 'snl_zuur_ven_of_hoogveenven',  'snl_droge_heide',
                     # 'snl_zandverstuiving', 'snl_hoogveen, 'all'
+
 sp_info = utils.get_sp_info()
 sp_sel = set(sp_info[groep]['sp_nm']) & set(sp_info[beheertype]['sp_nm']) & set(sp_info['nulsoort'][nulsoort]['sp_nm'])
+
+# get raw ndff data and filter on observation specs, such as area, protocol.
+# also narrow down to species from the selected species (ie. soortgroep, SNL subtype, nulsoort)
+ndff = utils.get_ndff_full()
+quer = 'protocol not in {0} & area < {1} & nl_name in {2}'.format(protocol_excl, min_area, list(sp_sel))
+ndff.query(quer, inplace=True)
 
 # Contraints on cells
 heide_periode_in = 2012  # reference year for heide presence in cells, either 1900 or 2012
@@ -27,6 +35,7 @@ oz05_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 1998-
 oz18_treshold_in = 75  # drempelwaarde voor onderzoeksvolledigheid periode 2008-2018. 0 if all values are ok
 plot_background = False  # Boolean, plot cells in output graph
 beheertype_in_titel = True
+comment_text = 'exclusief protocols' + ', '.join([protocol for protocol in protocol_excl])
 
 # margins for equality
 # cats = {'<0':range(-1000, 0), '0':range(0,1), '>0':range(1, 1000)}
@@ -41,13 +50,8 @@ def classifier(x, categories, labels):
         raise Exception('Sorry, requested value {0} is not found in any of the ranges.'.format(x))
 
 # out directory
-out_base_dir = r'd:\NW_out_data\b_per_tax\20190212'
+out_base_dir = r'd:\NW_out_data\20190218\minus_12-205'
 
-
-# get raw ndff data and filter
-ndff = utils.get_ndff_full()
-ndff = ndff.loc[(ndff['area'] < min_area) &
-                (ndff['nl_name'].isin(sp_sel)), :]
 
 # get requested cell type and narrow down
 cells = utils.get_hok_gdf(hok_type=hok, oz_taxgroup=oz_groep_in, oz05_treshold=oz05_treshold_in,
@@ -82,7 +86,7 @@ out_name = '{0}_{1}_{2}-{3}-diff_heide{4}-{5}_' \
 if not merged.empty:
     print('{0} cells will be written to file for diff {1}-{2}'.format(merged.shape[0], periode_1, periode_2))
     export_shape.diff_to_png(gdf=merged, col='diff_cat', cats= dict(zip(labs, ['red', 'white', 'green'])), title=title,
-                             background=plot_background, background_cells=cells,
+                             comment=comment_text, background=plot_background, background_cells=cells,
                              out_dir=os.path.join(out_base_dir, 'png'), out_name=out_name)
     merged.to_file(os.path.join(out_base_dir, 'shp', '{0}.shp'.format(out_name)))
 else:
