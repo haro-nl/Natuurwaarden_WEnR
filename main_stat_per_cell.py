@@ -31,7 +31,7 @@ hok = 'kmhok'        # one of: uurhok, kmhok.
 min_area = {'kmhok': 2500000, 'uurhok': 1e9}[hok]
 protocol_excl = []
 nulsoort = False     # include nulsoorten: True or False
-groep = 'dagvlinder' # one of: 'broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all'
+groep = 'vaatplant' # one of: 'broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all'
 beheertypes = ['snl_vochtige_heide', 'snl_zwakgebufferd_ven', 'snl_zuur_ven_of_hoogveenven',  'snl_droge_heide',
                'snl_zandverstuiving', 'snl_hoogveen', 'all']
 periodes = [range(2007, 2013), range(2013, 2019)]
@@ -43,7 +43,11 @@ heide_periode_in = 2012   # reference year for heide presence in cells, either 1
 heide_treshold_in = 7.5   # % of cell in year constaining heide. 0 if all values are ok
 oz05_treshold_in = 75     # drempelwaarde voor onderzoeksvolledigheid periode 1998-2007. 0 if all values are ok
 oz18_treshold_in = 75     # drempelwaarde voor onderzoeksvolledigheid periode 2008-2018. 0 if all values are ok
-sbb_area_treshold = 100   # drempelwaarde voor SBB areaal in de cell. Evaluation is <= 100 if all values are ok
+sbb_area_treshold = 0   # drempelwaarde voor SBB areaal in de cell. Evaluation is <=. 100 if all values are ok
+
+#======================================================================================================================#
+# Harmonize observation count per cell between periods
+equal_protocol_density = True
 
 #======================================================================================================================#
 # Create table for selection, per beheertype
@@ -79,6 +83,43 @@ for beheertype in beheertypes:
 
     #==================================================================================================================#
     # create piv tables and calculate trends if table is not empty
+
+    def sample_ndff(row):
+        # returns *obs_diff* indices from ndff_sel of observations corresponding to certain period, protocol and hok ID
+        periode_to_trim = utils.classifier(row.obs_diff, [range(1, 100000), range(-100000, 0)], labels)
+        subset = ndff_sel.loc[(ndff_sel[hok] == row.kmhok_id) &
+                              (ndff_sel['periode'] == periode_to_trim) &
+                              (ndff_sel['protocol'] == row.protocol), :]
+        if subset.shape[0] > np.abs(row.obs_diff):
+            return subset.sample(np.abs(row.obs_diff), replace=False).index.tolist()
+        else:
+            raise Exception('Requested sample size {0} exceeds ndff records '
+                            'complying to query: {1}.'.format(row.obs_diff, subset.shape[0]))
+
+    if equal_protocol_density:
+        # trim NDFF observations to ensure equal nr of obs for each protocol in each hok
+
+        # Piv tab of protocl counts per periode (columns) for each hok (index)
+        prt_piv = pd.pivot_table(ndff_sel, values='count', index=hok, columns= ['periode', 'protocol'], aggfunc='sum')
+
+        # Subtract two periods to calc diff in nr of observations per hok (index) per protocol (columns)
+        prt_diff = prt_piv.loc[:, labels[0]].subtract(prt_piv.loc[:, labels[1]]) # <0 means more obs in P2
+        prt_diff['kmhok_id'] = prt_diff.index
+
+        # Do the magic to create df with cols: kmhok_id, protocol, diff_obs. Note repetition in cols[:1]
+        prt_df = pd.melt(prt_diff, id_vars=['kmhok_id'], var_name='protocol', value_name='obs_diff')  # FUCK YEAH!
+        prt_df.drop(prt_df.loc[(prt_df['obs_diff'] == 0) | (prt_df['obs_diff'].isnull())].index, inplace=True, axis=0)
+
+        # sample ndff_sel for X indices to drop for each cell/protocol combination
+        indices_to_drop = [item for sublist in prt_df.apply(sample_ndff, axis=1).tolist() for item in sublist]
+        if len(indices_to_drop) > len(set(indices_to_drop)):
+            raise Exception('List of {0} IDs nominated for removal contains duplicates. Should not be!'.format(hok))
+
+        # drop all selected indices from ndff_sel
+        ndff_sel.drop(indices_to_drop, axis=0, inplace=True)
+
+        # TODO: report on difference before and after drop!
+
     hok_piv = pd.pivot_table(ndff_sel, values='nl_name', index=hok, columns='periode', aggfunc=lambda x: len(x.unique()))
     obs_piv = pd.pivot_table(ndff_sel, values='count', index='periode', aggfunc='sum')
     spe_piv = pd.pivot_table(ndff_sel, values=hok, index='nl_name', columns='periode', aggfunc=lambda x: len(x.unique()))
@@ -92,7 +133,7 @@ for beheertype in beheertypes:
     #==================================================================================================================#
     # Write tables to file
     t0 = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    out_base_dir = r'd:\NW_out_data\tabs_per_kmhok'
+    out_base_dir = r'd:\NW_out_data\tabs_per_kmhok\excl_sbb_incl_snl'
     base_name = 'Tabel-{0}-{1}-{2}_'.format(groep, beheertype, '-'.join([label for label in labels]))
 
     with open(os.path.join(out_base_dir, base_name+hok+'.csv'), 'w') as f:
