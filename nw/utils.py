@@ -7,6 +7,7 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 sys.path.extend(['M:\\b_aux\\python\\clones\\geopandas_master', 'M:/b_aux/python/clones/geopandas_master'])
 import geopandas as gp
@@ -243,7 +244,8 @@ def get_soortgroep_afkorting(soortgroep):
     try:
         return dict[soortgroep]
     except KeyError:
-        raise Exception('Thats numberwang')
+        raise Exception('{0} is not a valid soortgroep name, try one of '.format(soortgroep) +
+                        ', '.join(k for k in dict.keys()))
 
 
 def classifier(x, categories, labels):
@@ -253,8 +255,12 @@ def classifier(x, categories, labels):
     except ValueError:
         raise Exception('Sorry, requested value {0} is not found in any of the ranges.'.format(x))
 
+
 def ranges_to_years(l):
     # convert list of ranges to flat list of numbers
     # e.g.     l= [range(2007, 2013), range(2013, 2019)]
     # returns  [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]
     return [item for sublist in [[x for x in range] for range in l] for item in sublist]
+
+
+

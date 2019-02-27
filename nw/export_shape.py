@@ -85,6 +85,33 @@ def diff_to_png(gdf, title, comment, col, cats, background, background_cells, ou
     plt.close
 
 
+def plot_protocol_pies(pre_data, post_data, out_dir, out_name):
+    # function to plot pie-charts showing distribution of NDFF observation protocols (rows in *data*) for two periodes
+    # (cols in *data*) before (*pre-*) and after (*-post*) applying equal protocol density processing
+    periode1, periode2 = list(pre_data)
 
+    if pre_data.index.tolist() != post_data.index.tolist():
+        raise Exception('Different protocols found for pre and post data')
 
+    protocols = pre_data.index.tolist()
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222)
+    ax3 = fig.add_subplot(223)
+    ax4 = fig.add_subplot(224)
+
+    ax1.pie(x=pre_data[periode1].fillna(0), startangle=90)
+    ax2.pie(x=post_data[periode1].fillna(0), startangle=90)
+    ax3.pie(x=pre_data[periode2].fillna(0), startangle=90)
+    ax4.pie(x=post_data[periode2].fillna(0), startangle=90)
+
+    ax1.set(title='{0}-before'.format(periode1))
+    ax2.set(title='{0}-after'.format(periode1))
+    ax3.set(title='{0}-before'.format(periode2))
+    ax4.set(title='{0}-after'.format(periode2))
+
+    out_name_full = out_name + 'protocols.png'
+    plt.savefig(os.path.join(out_dir, out_name_full))
+    plt.close()
 
