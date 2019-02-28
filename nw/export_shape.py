@@ -69,14 +69,16 @@ def diff_to_png(gdf, title, comment, col, cats, background, background_cells, ou
     prov.plot(ax=ax, color='lightgrey')
 
     if background:
-        background_cells.plot(ax=ax, color='#15b01a', linewidth=0)
+        background_cells.plot(ax=ax, color='orange', linewidth=0)
 
     legend_patches = []
     for cat, color in cats.items():
         legend_patches.append(mpatches.Patch(label=cat, edgecolor='black', facecolor=color))
 
-    for cat, color in cats.items():
-        gdf.loc[gdf[col] == cat, :].plot(ax=ax, column=col, linewidth=0, color=color)
+    for cat, colour in cats.items():
+        sel = gdf.loc[gdf[col] == cat, :]
+        print('{0} df nrow: {1}'.format(cat, sel.shape[0]))
+        sel.plot(ax=ax, linewidth=0, color=colour)
 
     ax.text(1000, 301000, comment, ha='left', va='center', size=6)
 

@@ -263,4 +263,9 @@ def ranges_to_years(l):
     return [item for sublist in [[x for x in range] for range in l] for item in sublist]
 
 
-
+def minimum_area(hok_type):
+    min_areas = {'kmhok': 2500000, 'uurhok': 1e9}
+    try:
+        return min_areas[hok_type]
+    except KeyError:
+        raise Exception('{0} is not an accepted hoktype.'.format(hok_type))
