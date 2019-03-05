@@ -269,3 +269,99 @@ def minimum_area(hok_type):
         return min_areas[hok_type]
     except KeyError:
         raise Exception('{0} is not an accepted hoktype.'.format(hok_type))
+
+
+def sample_ndff(row, ndff, hok):
+    # returns row.obs_diff indices from *ndff_sel* of observations corresponding to row.period, row.protocol
+    # and row.hokID
+
+    subset_query = "{0} == {1} & periode == '{2}'".format(hok, row.kmhok_id, row.surplus_periode)
+
+    if hasattr(row, 'protocol'):
+        subset_query += " & protocol == '{0}'".format(row.protocol)
+
+    subset = ndff.query(subset_query)
+
+    if subset.shape[0] >= np.abs(row.obs_diff):
+        return subset.sample(np.abs(row.obs_diff), replace=False).index.tolist()
+    else:
+        raise Exception('{0}-{1}-{2} requests sample size {3}, but only {4} ndff records '
+                        'comply to query.'.format(row.kmhok_id, row.surplus_periode, row.protocol, row.obs_diff,
+                                                  subset.shape[0]))
+
+
+def get_equal_protocol_density(ndff_database, hok_type, periode_labels):
+    # Returns subset of NDFF database with equal nr of obersvations between two periodes, per cell, per protocol.
+    # Used when equal_protocol_density is True
+
+    # Piv tab of protocl counts per periode (columns) for each hok (index). Absence of protocl obs in hok filled w 0
+    prt_piv = pd.pivot_table(ndff_database, values='count', index=hok_type, columns=['periode', 'protocol'],
+                             aggfunc='sum', dropna=False, fill_value=0)
+
+    # Subtract two periods to calc diff in nr of observations per hok (index) per protocol (columns)
+    prt_diff = prt_piv.loc[:, periode_labels[0]].subtract(prt_piv.loc[:, periode_labels[1]])  # <0 means more obs in P2
+    prt_diff['kmhok_id'] = prt_diff.index
+
+    # Do the magic to create df with cols: kmhok_id, protocol, diff_obs. Note valus in  cols[:1] are repetitive
+    prt_df = pd.melt(prt_diff, id_vars=['kmhok_id'], var_name='protocol', value_name='obs_diff')
+    prt_df.drop(prt_df.loc[(prt_df['obs_diff'] == 0) | (prt_df['obs_diff'].isnull())].index, inplace=True, axis=0)
+
+    prt_df['surplus_periode'] = np.where(prt_df['obs_diff'] < 0, periode_labels[1], periode_labels[0])
+
+    # sample ndff_sel for X indices to drop for each cell/protocol combination
+    indices_to_drop_sublists = prt_df.apply(sample_ndff, axis=1, broadcast=False, ndff=ndff_database, hok=hok_type)
+    indices_to_drop = [item for sublist in indices_to_drop_sublists for item in sublist]
+    if len(indices_to_drop) > len(set(indices_to_drop)):
+        raise Exception('Huh, list of NDFF indices nominated for removal contains duplicates.'.format(hok_type))
+
+    print('\tIngoing: {0}. Now selecting {1} rows from NDFF to achieve equal observations'
+          ' per cell '.format(ndff_database.shape[0], len(indices_to_drop)))
+
+    return indices_to_drop
+
+
+def get_equal_obs(ndff_database, hok_type, periode_labels):
+    # Returns subset of NDFF database with equal number of observations between two periods for each cell, regardless
+    # of observation protocol. Used when equal_obs = True
+
+    # Piv tab of protocl counts per periode (columns) for each hok (index). Absence of protocl obs in hok filled w 0
+    prt_piv = pd.pivot_table(ndff_database, values='count', index=hok_type, columns='periode',  aggfunc='sum',
+                             fill_value=0)
+
+    # Subtract two periods to calc diff in nr of observations per hok (index) per protocol (columns)
+    prt_piv['obs_diff'] = prt_piv.apply(lambda row: row[periode_labels[0]] - row[periode_labels[1]], axis=1)
+    prt_piv.drop(prt_piv.loc[(prt_piv['obs_diff'] == 0) | (prt_piv['obs_diff'].isnull())].index, inplace=True, axis=0)
+    prt_piv['kmhok_id'] = prt_piv.index
+    prt_piv['surplus_periode'] = np.where(prt_piv['obs_diff'] < 0, periode_labels[1], periode_labels[0])
+
+    # indices_to_drop_sublists = []
+    # for index, row in prt_piv.iterrows():
+    #     indices_to_drop_sublists.append(sample_ndff_x(obs_diff=row['obs_diff'], kmhok_id=row['kmhok_id'],
+    #                                                   labels=periode_labels, hok=hok_type, protocol='.',
+    #                                                   ndff=ndff_database))
+
+    indices_to_drop_sublists = prt_piv.apply(sample_ndff, axis=1, ndff=ndff_database, hok=hok_type)
+    indices_to_drop = [item for sublist in indices_to_drop_sublists for item in sublist]
+    if len(indices_to_drop) > len(set(indices_to_drop)):
+        raise Exception('Huh, list of NDFF indices nominated for removal contains duplicates.'.format(hok_type))
+
+    print('\tIngoing: {0}. Now selecting {1} rows from NDFF to achieve equal observations'
+          ' per cell '.format(ndff_database.shape[0], len(indices_to_drop)))
+
+    # drop all selected indices from ndff_sel
+    return indices_to_drop
+
+
+class RowTest():
+    def __init__(self, nobs, protocol, periode, hokid):
+        self.obs_diff = nobs
+        self.protocol = protocol
+        self.surplus_periode = periode
+        self.kmhok_id = hokid
+
+def make_test_row(n_obs, protocol_in, periode_in, hokid_in):
+    row = RowTest(n_obs, protocol_in, periode_in, hokid_in)
+    return row
+
+# test_row = make_test_row(4, '03.003 Tuinvlindertelling', 'P2007-2012', 145462)
+# foo = sample_ndff(row=test_row, ndff=ndff_sel, hok='kmhok')

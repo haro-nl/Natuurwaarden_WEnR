@@ -17,7 +17,7 @@
 # areaal SBB beheerd land
 #
 # Hans Roelofsen, WEnR, 20 feb 2019
-# ================================#====================================================================================#
+# =====================================================================================================================#
 
 import os
 import datetime
@@ -32,7 +32,7 @@ from nw import export_shape
 hok = 'kmhok'  # one of: uurhok, kmhok.
 protocol_excl = []
 nulsoort = False  # include nulsoorten: True or False
-groep = 'dagvlinder'  # one of: 'broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all'
+groep = 'vaatplant'  # one of: 'broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all'
 beheertypes = ['all']#['snl_vochtige_heide', 'snl_zuur_ven_of_hoogveenven', 'snl_droge_heide',
               #'snl_zandverstuiving', 'snl_hoogveen', 'all']
 periodes = [range(2007, 2013), range(2013, 2019)]  # list of ranges
@@ -48,8 +48,12 @@ sbb_area_treshold = 100  # drempelwaarde voor SBB areaal in de cell. Evaluation 
 
 # =====================================================================================================================#
 # various processing and output options
-equal_protocol_density = True  # Harmonize observation count per cell between periods, yes or no?
-print_tables = False  # write tables to file. See below for output directory
+equal_protocol_density = False  # Harmonize observation count per cell, per protocol, between periods, yes or no?
+equal_obs = True # Harmonize observation count per cell, between periodes, yer or no.
+if equal_protocol_density and equal_obs:
+    raise Exception('This is not recommended')
+
+print_tables = True  # write tables to file. See below for output directory
 print_diff_maps = True  # write maps to file. See below for parameters
 
 # =====================================================================================================================#
@@ -88,53 +92,32 @@ for beheertype in beheertypes:
     ndff_sel['count'] = 1
 
     #==================================================================================================================#
-    # Dilute NDFF to equal obs per cell per protocol if requested
+    # Dilute NDFF to equal obs per cell per protocol between periodes if requested
     if equal_protocol_density:
-
-        def sample_ndff(row):
-            # returns *obs_diff* indices from ndff_sel of observations corresponding to period, protocol and hok ID
-            periode_to_trim = utils.classifier(row.obs_diff, [range(1, 100000), range(-100000, 0)], labels)
-            subset = ndff_sel.loc[(ndff_sel[hok] == row.kmhok_id) &
-                                  (ndff_sel['periode'] == periode_to_trim) &
-                                  (ndff_sel['protocol'] == row.protocol), :]
-            if subset.shape[0] >= np.abs(row.obs_diff):
-                return subset.sample(np.abs(row.obs_diff), replace=False).index.tolist()
-            else:
-                raise Exception('Requested sample size {0} exceeds ndff records '
-                                'complying to query: {1}.'.format(row.obs_diff, subset.shape[0]))
-
-        # Piv tab of protocl counts per periode (columns) for each hok (index). Absence of protocl obs in hok filled w 0
-        prt_piv = pd.pivot_table(ndff_sel, values='count', index=hok, columns=['periode', 'protocol'], aggfunc='sum',
-                                 dropna=False, fill_value=0)
-
-        # Subtract two periods to calc diff in nr of observations per hok (index) per protocol (columns)
-        prt_diff = prt_piv.loc[:, labels[0]].subtract(prt_piv.loc[:, labels[1]])  # <0 means more obs in P2
-        prt_diff['kmhok_id'] = prt_diff.index
-
-        # Do the magic to create df with cols: kmhok_id, protocol, diff_obs. Note valus in  cols[:1] are repetitive
-        prt_df = pd.melt(prt_diff, id_vars=['kmhok_id'], var_name='protocol', value_name='obs_diff')
-        prt_df.drop(prt_df.loc[(prt_df['obs_diff'] == 0) | (prt_df['obs_diff'].isnull())].index, inplace=True, axis=0)
-
-        # sample ndff_sel for X indices to drop for each cell/protocol combination
-        indices_to_drop_sublists = prt_df.apply(sample_ndff, axis=1, broadcast=False)
-        indices_to_drop = [item for sublist in indices_to_drop_sublists for item in sublist]
-        if len(indices_to_drop) > len(set(indices_to_drop)):
-            raise Exception('List of ndff indices nominated for removal contains duplicates. Should not be'.format(hok))
-
-        # drop all selected indices from ndff_sel
+        indices_to_drop = utils.get_equal_protocol_density(ndff_database=ndff_sel, hok_type=hok, periode_labels=labels)
         ndff_sel.drop(indices_to_drop, axis=0, inplace=True)
+        print('\tOutgoing: {0}'.format(ndff_sel.shape[0]))
+
+    #==================================================================================================================#
+    # Dilute NDFF to equal obs per cell between periodes, regardless of protocol, if requested
+    if equal_obs:
+        indices_to_drop = utils.get_equal_obs(ndff_database=ndff_sel, hok_type=hok, periode_labels=labels)
+        ndff_sel.drop(indices_to_drop, axis=0, inplace=True)
+        print('\tOutgoing: {0}'.format(ndff_sel.shape[0]))
 
     #==================================================================================================================#
     # summarize results via several piv tables
 
     # nr species per hok for each period
-    hok_piv = pd.pivot_table(ndff_sel, values='nl_name', index=hok, columns='periode', aggfunc=lambda x: len(x.unique()))
+    hok_piv = pd.pivot_table(ndff_sel, values='nl_name', index=hok, columns='periode',
+                             aggfunc=lambda x: len(x.unique()))
 
     # nr obs per hok for each period
     obs_piv = pd.pivot_table(ndff_sel, values='count', index=hok, columns='periode', aggfunc='sum')
 
     # nr protocols per hok for each period
-    prt_piv = pd.pivot_table(ndff_sel, values='protocol', index=hok, columns='periode', aggfunc=lambda x: len(x.unique()))
+    prt_piv = pd.pivot_table(ndff_sel, values='protocol', index=hok, columns='periode',
+                             aggfunc=lambda x: len(x.unique()))
 
     # merge above 3 pivs into single df
     tmp_df = pd.merge(left=hok_piv.rename(columns=dict(zip(labels, [label + '_sp_count' for label in labels]))),
@@ -144,7 +127,8 @@ for beheertype in beheertypes:
                       right=prt_piv.rename(columns=dict(zip(labels, [label+'_protocol_count' for label in labels]))))
 
     # nr hokken per species for each period
-    spe_piv = pd.pivot_table(ndff_sel, values=hok, index='nl_name', columns='periode', aggfunc=lambda x: len(x.unique()))
+    spe_piv = pd.pivot_table(ndff_sel, values=hok, index='nl_name', columns='periode',
+                             aggfunc=lambda x: len(x.unique()))
 
     # difference in species count per hok between two periods
     hok_df['sp_count_diff'.format(hok)] = hok_df.apply(lambda row: np.subtract(row[labels[1]+'_sp_count'],
@@ -156,16 +140,28 @@ for beheertype in beheertypes:
     # =================================================================================================================#
     # Write output to file(s)
     t0 = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    out_base_dir = r'd:\NW_out_data\tabs_per_kmhok\yes_protocol_filter'
-    base_name = '-{0}-{1}-{2}_'.format(groep, beheertype, '-'.join([label for label in labels]))
+    t0_brief = datetime.datetime.now().strftime("%y%m%d-%H%M")
+    out_base_dir = r'd:\NW_out_data\tabs_per_kmhok\equal_obs_random'
+    base_name = '-{0}-{1}-{2}'.format(groep, beheertype, '-'.join([label for label in labels]))
 
     if print_tables:
-        with open(os.path.join(out_base_dir, ' Tabel' + base_name + hok + '.csv'), 'w') as f:
+        out_name = 'Table{0}_{1}_{2}.csv'.format(base_name, hok, t0_brief)
+        with open(os.path.join(out_base_dir, out_name), 'w') as f:
             # header
             f.write('# Tabulated extract from NDFF database, by Hans Roelofsen, {0}, WEnR team B&B.\n'.format(t0))
             f.write('# Query from NDFF database was: {0}\n'.format(ndff_query[:ndff_query.index(hok)]))
             f.write('# Plus NDFF observations restricted to {0} meeting the following query: {1}\n'.format(hok,
                                                                                                            cells_query))
+            if any([equal_protocol_density, equal_obs]):
+                f.write('# {0} observations were filtered from NDDF to achieve {1}.\n'.format(len(indices_to_drop),
+                                                                ['equal observations per protocol per cell between '
+                                                                 'periodes.', 'equal observations per cell between '
+                                                                              'periodes.'][[equal_protocol_density,
+                                                                                            equal_obs].index(True)]))
+
+            f.write('# n Obs {0}: {1}, {2}: {3}\n'.format(labels[0], np.sum(hok_df['{0}_obs_count'.format(labels[0])]),
+                                                      labels[1], np.sum(hok_df['{0}_obs_count'.format(labels[0])])))
+            f.write('# n {0}en: {1}\n'.format(hok, str(hok_df.shape[0])))
 
             # hok as index dataframe
             f.write(hok_df.fillna(9999).astype(np.int32).to_csv(sep=';', header=True, index=True))
@@ -181,11 +177,12 @@ for beheertype in beheertypes:
     if print_diff_maps:
         # categorize difference into categories
         cats = [range(-1000, -1), range(-1, 2), range(2, 1000)]
-        labs = ['-2 of nog minder', 'tussen -1 en 1', '2 of meer']
+        labs = ['-2 of nog minder', '-1, 0 of 1', '2 of nog meer']
         hok_df['diff_cat'] = hok_df['sp_count_diff'].apply(utils.classifier, args=(cats, labs))
         hok_gdf = pd.merge(left=cells_sel, right=hok_df, how='inner', left_on='ID', right_index=True)
 
         title = 'Toe/Afname van {0} gedurende {1} - {2}'.format(groep, labels[0], labels[1])
+        out_name = 'Map_{0}_{1}_{2}.png'.format(base_name, hok, t0_brief)
         export_shape.diff_to_png(gdf=hok_gdf, col='diff_cat', cats=dict(zip(labs, ['red', 'white', 'green'])),
                                  title=title, comment='', background=False, background_cells=cells_sel,
-                                 out_dir=out_base_dir, out_name='DiffMap' + base_name + hok + '.png')
+                                 out_dir=out_base_dir, out_name=out_name)
