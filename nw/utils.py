@@ -22,7 +22,7 @@ def iftrue(x):
 
 def get_sp_info():
     # Read csv file with information on species, return as dictionary
-    splist = pd.read_csv(os.path.join(r'd:\NW_src_data', 'soorten_lijst.txt'), sep=';')
+    splist = pd.read_csv(os.path.join(r'd:\NW_src_data', 'soorten_lijst.txt'), sep=';', comment='#')
 
     # convert species names to lowercase just to be sure
     splist['sp_nm'] = splist['sp_nm'].str.lower()
@@ -41,16 +41,25 @@ def get_sp_info():
 
     # species names and numbers for each taxonomic group
     tax_groups = splist['tax_groep'].unique().tolist()
+    out['taxgroep'] = {}
     for group in tax_groups:
         out[group] = {'sp_nm': splist.loc[splist['tax_groep'] == group, 'sp_nm'].tolist(),
                       'sp_nr': splist.loc[splist['tax_groep'] == group, 'sp_nr'].tolist()}
 
+        # taxgroepen
+        out['taxgroep'][group] = group
+    out['taxgroep']['all'] = tax_groups
+
+
     # species names and numbers for each subhabitat
     habtypes = [x for x in list(splist) if 'SNL_' in x]
 
+    out['habitattypes'] = {}
     for hab in habtypes:
         out[hab.lower()] = {'sp_nm': splist.loc[splist[hab] == 1, 'sp_nm'].tolist(),
                     'sp_nr': splist.loc[splist[hab] == 1, 'sp_nr'].tolist()}
+        out['habitattypes'][hab] = hab
+    out['habitattypes']['all'] = habtypes
 
     # species names and numbers for NW, LPI, SNL
     # TODO 12-02-2019: dit net zo doen als voor Nulsoorten
@@ -84,12 +93,6 @@ def try_get_sp_info(sp_name, sp_char, default, sp_info):
         return sp_info[sp_name][sp_char]
     except KeyError:
         return default
-
-
-def get_hab_cels(hab_type, cell_type, all):
-    # Function rendered obsolote 06 feb 2019
-    return all.loc[(all[hab_type] == 1) &
-                   (all['nulsoort'] == 1), cell_type].unique().tolist()
 
 
 def kh_id(xy):
@@ -136,26 +139,6 @@ def quartohok_id(xy):
     return "{0}{1}".format(head, tail)
 
 
-def get_uh_heide_ids(year, treshold):
-    # returns list of uh IDs where heide coveregage exceeds *treshold* in *year*
-    # FUNCTION RETIRED!
-    if year in (1900, 2012):
-        dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\uurhok_heide.shp')
-        return dat.loc[dat['heide{0}'.format(year)] > treshold, 'ID'].tolist()
-    else:
-        return []
-
-
-def get_kh_heide_ids(year, treshold):
-    # returns list of uh IDs where heide coveregage exceeds *treshold* in *year*
-    # Function prob no longer required as of 06 feb 2019
-    if year in (1900, 2012):
-        dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\kmhok_heide.shp')
-        return dat.loc[dat['heide{0}'.format(year)] > treshold, 'ID'].tolist()
-    else:
-        return []
-
-
 def get_heide_gdf(hok, year, treshold):
     # return geodataframe of either km or uurhok where heide presence exceeds treshold
     # assumes location of source shapefiles.
@@ -167,12 +150,6 @@ def get_heide_gdf(hok, year, treshold):
         return dat.loc[dat['heide{0}'.format(year)] > treshold, :]
     else:
         raise Exception('Give either uur or km hok, not {0}'.format(hok))
-
-
-def get_uh_gdf(heide_periode, heide_treshold):
-    # Function obsolote as of 6 feb 2019,
-    dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\uurhok_heide.shp')
-    return dat.loc[dat['heide{0}'.format(heide_periode)] > heide_treshold, :]
 
 
 def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_periode, heide_treshold, sbb_treshold):
@@ -235,12 +212,13 @@ def get_bins(soortgroep):
 
 def get_ndff_full():
     # function to return the full NDFF table
-    return pd.read_csv(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data', 'ndff_b2_all_v2.csv'))
+    return pd.read_csv(os.path.join(r'\\wur\dfs-root\PROJECTS\eval_nnn_wenr\b_prepared_data\NDFF_extract',
+                                    'ndff_b2_all_v2.csv'), comment='#')
 
 
 def get_soortgroep_afkorting(soortgroep):
     # Translation between soortgroep name and soortgroep afkorting
-    dict = {'vaatplant': 'plnt', 'broedvogel': 'vog', 'dagvlinder': 'vli', 'herpetofauna': 'rep', 'all':'all'}
+    dict = {'vaatplant': 'plnt', 'broedvogel': 'vog', 'dagvlinder': 'vli', 'herpetofauna': 'rep', 'all': 'all'}
     try:
         return dict[soortgroep]
     except KeyError:
@@ -294,6 +272,8 @@ def get_equal_protocol_density(ndff_database, hok_type, periode_labels):
     # Returns subset of NDFF database with equal nr of obersvations between two periodes, per cell, per protocol.
     # Used when equal_protocol_density is True
 
+    # TODO (20190821) deze functie is vrij onduidelijk. Wellicht nog een keer verbeteren
+
     # Piv tab of protocl counts per periode (columns) for each hok (index). Absence of protocl obs in hok filled w 0
     prt_piv = pd.pivot_table(ndff_database, values='count', index=hok_type, columns=['periode', 'protocol'],
                              aggfunc='sum', dropna=False, fill_value=0)
@@ -320,9 +300,11 @@ def get_equal_protocol_density(ndff_database, hok_type, periode_labels):
     return indices_to_drop
 
 
-def get_equal_obs(ndff_database, hok_type, periode_labels):
+def get_equal_obs_per_cell(ndff_database, hok_type, periode_labels):
     # Returns subset of NDFF database with equal number of observations between two periods for each cell, regardless
-    # of observation protocol. Used when equal_obs = True
+    # of observation protocol. Used when equal_obs_per_cell = True
+
+    # TODO (20190821) deze functie is vrij onduidelijk. Wellicht nog een keer verbeteren
 
     # Piv tab of protocl counts per periode (columns) for each hok (index). Absence of protocl obs in hok filled w 0
     prt_piv = pd.pivot_table(ndff_database, values='count', index=hok_type, columns='periode',  aggfunc='sum',
@@ -334,14 +316,10 @@ def get_equal_obs(ndff_database, hok_type, periode_labels):
     prt_piv['kmhok_id'] = prt_piv.index
     prt_piv['surplus_periode'] = np.where(prt_piv['obs_diff'] < 0, periode_labels[1], periode_labels[0])
 
-    # indices_to_drop_sublists = []
-    # for index, row in prt_piv.iterrows():
-    #     indices_to_drop_sublists.append(sample_ndff_x(obs_diff=row['obs_diff'], kmhok_id=row['kmhok_id'],
-    #                                                   labels=periode_labels, hok=hok_type, protocol='.',
-    #                                                   ndff=ndff_database))
-
+    # HUH??? 20190801
     indices_to_drop_sublists = prt_piv.apply(sample_ndff, axis=1, ndff=ndff_database, hok=hok_type)
     indices_to_drop = [item for sublist in indices_to_drop_sublists for item in sublist]
+
     if len(indices_to_drop) > len(set(indices_to_drop)):
         raise Exception('Huh, list of NDFF indices nominated for removal contains duplicates.'.format(hok_type))
 
