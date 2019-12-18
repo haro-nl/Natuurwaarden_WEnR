@@ -36,8 +36,7 @@ def create_250m_hok(xy):
     out['d'] = [(xmin, ymin), (xcenter, ymin), (xcenter, ycenter), (xmin, ycenter)]
     return out
 
-
-## KILOMETERHOKKEN
+# KILOMETERHOKKEN
 kh_dir_in = r'd:\NW_src_data\subhokken'
 kh_shp_in = 'duplos.shp'
 kh_orig = gp.read_file(os.path.join(kh_dir_in, kh_shp_in))

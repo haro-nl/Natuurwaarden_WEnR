@@ -9,7 +9,7 @@ from nw import export_shape
 
 # Constraints on NDFF observations
 hok = 'kmhok'  # either uurhok, kmhok. TODO: Extent to duplohok, quartohok
-min_area = {'kmhok':2500000, 'uurhok':1e9}[hok] # 2500000 for km hokken! 1e9 for uurhokken
+min_area = {'kmhok': 2500000, 'uurhok': 1e9}[hok]  # 2500000 for km hokken! 1e9 for uurhokken
 protocol_excl = ['12.205 Monitoring Beoordeling Natuurkwaliteit EHS - N2000 (SNL-2014)'] # list of protocols, or empty list
 nulsoort = False  # include nulsoorten: True or False
 groep = 'vaatplant'  # one of following['broedvogel', 'dagvlinder', 'vaatplant', 'herpetofauna', 'all']

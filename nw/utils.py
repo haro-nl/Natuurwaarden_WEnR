@@ -1,6 +1,6 @@
 """Several helper functies voor het Natuurwaarden project. Hans Roelofsen, 04 december 2018 WEnR"""
 
-"""script to make species list information available as a dictionary in the broadest sense of the terms
+"""Make species list information available as a dictionary in the broadest sense of the terms
 Hans Roelofsen"""
 
 import sys
@@ -8,9 +8,10 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
-sys.path.extend(['M:\\b_aux\\python\\clones\\geopandas_master', 'M:/b_aux/python/clones/geopandas_master'])
 import geopandas as gp
+
+
+# sys.path.extend(['M:\\b_aux\\python\\clones\\geopandas_master', 'M:/b_aux/python/clones/geopandas_master'])
 
 
 def iftrue(x):
@@ -21,6 +22,8 @@ def iftrue(x):
 
 
 def get_sp_info():
+    """Provide species list information available as a dictionary"""
+
     # Read csv file with information on species, return as dictionary
     splist = pd.read_csv(os.path.join(r'd:\NW_src_data', 'soorten_lijst.txt'), sep=';', comment='#')
 
@@ -34,10 +37,10 @@ def get_sp_info():
                   'sp_nr': splist['sp_nr'].unique().tolist()}
 
     # Nulsoorten
-    out['nulsoort'] = {True:{'sp_nm':splist.loc[splist['nulsoort'] == 1, 'sp_nm'].tolist(),
-                             'sp_nr':splist.loc[splist['nulsoort'] == 1, 'sp_nr'].tolist()},
-                       False:{'sp_nm':splist.loc[splist['nulsoort'] != 1, 'sp_nm'].tolist(),
-                              'sp_nr':splist.loc[splist['nulsoort'] != 1, 'sp_nr'].tolist()}}
+    out['nulsoort'] = {True: {'sp_nm': splist.loc[splist['nulsoort'] == 1, 'sp_nm'].tolist(),
+                              'sp_nr': splist.loc[splist['nulsoort'] == 1, 'sp_nr'].tolist()},
+                       False: {'sp_nm': splist.loc[splist['nulsoort'] != 1, 'sp_nm'].tolist(),
+                               'sp_nr': splist.loc[splist['nulsoort'] != 1, 'sp_nr'].tolist()}}
 
     # species names and numbers for each taxonomic group
     tax_groups = splist['tax_groep'].unique().tolist()
@@ -50,14 +53,13 @@ def get_sp_info():
         out['taxgroep'][group] = group
     out['taxgroep']['all'] = tax_groups
 
-
     # species names and numbers for each subhabitat
     habtypes = [x for x in list(splist) if 'SNL_' in x]
 
     out['habitattypes'] = {}
     for hab in habtypes:
         out[hab.lower()] = {'sp_nm': splist.loc[splist[hab] == 1, 'sp_nm'].tolist(),
-                    'sp_nr': splist.loc[splist[hab] == 1, 'sp_nr'].tolist()}
+                            'sp_nr': splist.loc[splist[hab] == 1, 'sp_nr'].tolist()}
         out['habitattypes'][hab] = hab
     out['habitattypes']['all'] = habtypes
 
@@ -144,7 +146,7 @@ def get_heide_gdf(hok, year, treshold):
     # assumes location of source shapefiles.
     # Hans Roelofsen, 09 january 2019
     #
-    # Function retired 5 feb 2019
+    # Function z_retired 5 feb 2019
     if hok in ['uur', 'km']:
         dat = gp.read_file(r'm:\a_Projects\Natuurwaarden\intermediate_data\hgn_heide\{0}hok_heide.shp'.format(hok))
         return dat.loc[dat['heide{0}'.format(year)] > treshold, :]
@@ -159,7 +161,7 @@ def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_perio
     # treshold must be in: [0, 25, 50, 100]
     # assumes location of data
 
-    if hok_type not in['uurhok', 'kmhok']:
+    if hok_type not in ['uurhok', 'kmhok']:
         raise Exception('Hoktype must be in [uur, km], not {0}'.format(hok_type))
     # TODO: extent to 500m and 250m hokken!
     if oz_taxgroup not in ['vog', 'vli', 'plnt', 'rep', 'all']:
@@ -168,7 +170,8 @@ def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_perio
         raise Exception('Valid tresholds are 25, 50, 75 and 100, not {0} or {1}'.format(oz05_treshold, oz18_treshold))
     # TODO, check heide arguments for validity
     dat = gp.read_file(
-        os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data\uh_kh_compleet', '{0}_compleet.shp'.format(hok_type)))
+        os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data\uh_kh_compleet',
+                     '{0}_compleet.shp'.format(hok_type)))
     oz05_att = '{0}_oz05'.format(oz_taxgroup)
     oz18_att = '{0}_oz18'.format(oz_taxgroup)
     heide_att = 'heide{0}'.format(heide_periode)
@@ -179,8 +182,8 @@ def get_hok_gdf(hok_type, oz_taxgroup, oz05_treshold, oz18_treshold, heide_perio
 
 
 def get_hok_gdf_simple(hok_type):
-    return  gp.read_file(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data\uh_kh_compleet',
-                                      '{0}_compleet.shp'.format(hok_type)))
+    return gp.read_file(os.path.join(r'm:\a_Projects\Natuurwaarden\intermediate_data\uh_kh_compleet',
+                                     '{0}_compleet.shp'.format(hok_type)))
 
 
 def get_vlinder_250m_completeness(treshold):
@@ -205,8 +208,8 @@ def get_bins(soortgroep):
         raise Exception('{0} is not a valid species groep, please select from: '.format(soortgroep) +
                         ', '.join(str(k) for k, v in bins.items()))
     # while max_val < dat[-1]:
-        # make sure that the highest value is never contained in the bins, but generated to cap the last class
-        # dat = dat[:-1]
+    # make sure that the highest value is never contained in the bins, but generated to cap the last class
+    # dat = dat[:-1]
     return dat
 
 
@@ -239,6 +242,7 @@ def ranges_to_years(l):
     # e.g.     l= [range(2007, 2013), range(2013, 2019)]
     # returns  [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]
     return [item for sublist in [[x for x in range] for range in l] for item in sublist]
+    # ...NEAT!
 
 
 def minimum_area(hok_type):
@@ -273,6 +277,7 @@ def get_equal_protocol_density(ndff_database, hok_type, periode_labels):
     # Used when equal_protocol_density is True
 
     # TODO (20190821) deze functie is vrij onduidelijk. Wellicht nog een keer verbeteren
+    # edit 20191218: inderdaad een goed idee
 
     # Piv tab of protocl counts per periode (columns) for each hok (index). Absence of protocl obs in hok filled w 0
     prt_piv = pd.pivot_table(ndff_database, values='count', index=hok_type, columns=['periode', 'protocol'],
@@ -307,7 +312,7 @@ def get_equal_obs_per_cell(ndff_database, hok_type, periode_labels):
     # TODO (20190821) deze functie is vrij onduidelijk. Wellicht nog een keer verbeteren
 
     # Piv tab of protocl counts per periode (columns) for each hok (index). Absence of protocl obs in hok filled w 0
-    prt_piv = pd.pivot_table(ndff_database, values='count', index=hok_type, columns='periode',  aggfunc='sum',
+    prt_piv = pd.pivot_table(ndff_database, values='count', index=hok_type, columns='periode', aggfunc='sum',
                              fill_value=0)
 
     # Subtract two periods to calc diff in nr of observations per hok (index) per protocol (columns)
@@ -330,12 +335,13 @@ def get_equal_obs_per_cell(ndff_database, hok_type, periode_labels):
     return indices_to_drop
 
 
-class RowTest():
+class RowTest:
     def __init__(self, nobs, protocol, periode, hokid):
         self.obs_diff = nobs
         self.protocol = protocol
         self.surplus_periode = periode
         self.kmhok_id = hokid
+
 
 def make_test_row(n_obs, protocol_in, periode_in, hokid_in):
     row = RowTest(n_obs, protocol_in, periode_in, hokid_in)

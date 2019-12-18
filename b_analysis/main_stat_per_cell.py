@@ -10,16 +10,20 @@ NDFF database can be restricted to observations meeting some criteria, or cells 
 Further restrictions can be applied to guarantee equal nr of observations per cell per protocol
 
 The NDFF dabtasbase selection criteria are:
-km or uurhok, minimum area, sampling protocol, include nulsoort, species group, beheertype
+  km or uurhok
+  minimum area
+  sampling protocol
+  include nulsoort
+  species group
+  beheertype
 
 The cell selection criteria are:
-onderzoeksvolledigheid per soortgroep voor periodes 1998-2007 and 2008-2018
-areaal heide volgens LGN in 1900 en 2012
-areaal SBB beheerd land
+  onderzoeksvolledigheid per soortgroep voor periodes 1998-2007 and 2008-2018
+  areaal heide volgens LGN in 1900 en 2012
+  areaal SBB beheerd land
 
 Hans Roelofsen, WEnR, 20 feb 2019
 updates 21 august 2019
-
 """
 
 import os
@@ -52,8 +56,8 @@ sbb_area_treshold = 0  # drempelwaarde voor SBB areaal in de cell. Evaluation is
 # =====================================================================================================================#
 # various processing and output options
 equal_protocol_density_per_cell = False  # Harmonize observation count per cell, per protocol, between periods?
-equal_obs_per_cell = False  # Harmonize observation count per cell, between periodes
-equal_obs_per_period = True  # Harmonize observation count between periodes
+equal_obs_per_cell = False               # Harmonize observation count per cell, between periodes
+equal_obs_per_period = True              # Harmonize observation count between periodes
 
 if equal_protocol_density_per_cell and equal_obs_per_cell:
     raise Exception('This is not recommended')
@@ -61,12 +65,12 @@ if equal_protocol_density_per_cell and equal_obs_per_cell:
 print_tables = True  # write tables to file. See below for output directory
 print_diff_maps = False  # write maps to file. See below for parameters
 
-# =================================================================================================================#
+# =====================================================================================================================#
 # get requested cell type and narrow down
 cells = utils.get_hok_gdf_simple(hok_type=hok)
-cells_query = '{0}_oz05 >= {1} & {0}_oz18 >= {2} & heide{3} >= {4} & sbb_aream2 >= {5}'.format(
-     utils.get_soortgroep_afkorting(groep), oz05_treshold_in, oz18_treshold_in, heide_periode_in, heide_treshold_in,
-     sbb_area_treshold)
+cells_query = '{0}_oz05 >= {1} & {0}_oz18 >= {2} & heide{3} >= {4} & sbb_aream2 >= {5}'\
+              .format(utils.get_soortgroep_afkorting(groep), oz05_treshold_in, oz18_treshold_in, heide_periode_in,
+                      heide_treshold_in, sbb_area_treshold)
 cells_sel = cells.query(cells_query)
 
 if cells_sel.empty:
@@ -74,7 +78,7 @@ if cells_sel.empty:
 else:
     print('Found {0} {1}-hokken complying to query'.format(cells_sel.shape[0], hok))
 
-# =================================================================================================================#
+# =====================================================================================================================#
 # get information dictionary on all species
 sp_info = utils.get_sp_info()
 
@@ -108,29 +112,29 @@ else:
     print('\t{0} out of {1} NDFF records complying to query.'.format(ndff_sel.shape[0], ndff.shape[0]))
 
 # add the periode as a string-column based on the year of the observation
-ndff_sel['periode'] = ndff_sel['year'].apply(utils.classifier, args=(periodes, labels))
-ndff_sel['count'] = 1  # counter
+ndff_sel.loc[:, 'periode'] = ndff_sel['year'].apply(utils.classifier, args=(periodes, labels))
+ndff_sel.loc[:, 'count'] = 1  # counter
 print(ndff_sel.head())
 
-#==================================================================================================================#
+#======================================================================================================================#
 # store NDFF sample size
 ndff_sel_size = ndff_sel.shape[0]
 
-#==================================================================================================================#
+#======================================================================================================================#
 # Dilute NDFF to equal obs per cell per protocol between periodes if requested
 if equal_protocol_density_per_cell:
     indices_to_drop = utils.get_equal_protocol_density(ndff_database=ndff_sel, hok_type=hok, periode_labels=labels)
     ndff_sel.drop(indices_to_drop, axis=0, inplace=True)
     print('\tOutgoing: {0}'.format(ndff_sel.shape[0]))
 
-#==================================================================================================================#
+#======================================================================================================================#
 # Dilute NDFF to equal obs per cell between periodes, regardless of protocol, if requested
 elif equal_obs_per_cell:
     indices_to_drop = utils.get_equal_obs_per_cell(ndff_database=ndff_sel, hok_type=hok, periode_labels=labels)
     ndff_sel.drop(indices_to_drop, axis=0, inplace=True)
     print('\tOutgoing: {0}'.format(ndff_sel.shape[0]))
 
-#==================================================================================================================#
+#======================================================================================================================#
 # Dilute NDFF to equal obs between periodes, regardless of protocol or count per cell, if requested
 elif equal_obs_per_period:
     obs_count = pd.pivot_table(ndff_sel, index='periode', values='count', aggfunc='sum')  # nr of obs per periode
@@ -140,11 +144,9 @@ elif equal_obs_per_period:
         surplus_periode = obs_count.loc[obs_count == obs_count.max()].index.tolist()[0]
         deficient_periode = obs_count.loc[obs_count == obs_count.min()].index.tolist()[0]
 
-        print('Periode {0} has {1} obs, which is {2} more than periode {3} with {4}'.format(surplus_periode,
-                                                                                            obs_count[surplus_periode],
-                                                                                            surplus,
-                                                                                            deficient_periode,
-                                                                                            obs_count[deficient_periode]))
+        print('Periode {0} has {1} obs, which is {2} more than periode {3} with {4}'
+              .format(surplus_periode, obs_count[surplus_periode], surplus, deficient_periode,
+                      obs_count[deficient_periode]))
 
         indices_to_drop = np.random.choice(ndff_sel[ndff_sel['periode'] == surplus_periode].index, size=surplus,
                                            replace=False)
