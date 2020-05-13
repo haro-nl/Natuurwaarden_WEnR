@@ -97,6 +97,30 @@ def try_get_sp_info(sp_name, sp_char, default, sp_info):
         return default
 
 
+def sq_vert(xy, size, vertices=False, ll_string=False):
+    """
+    Construct square around point xy of which the lower left corner are the nearest coordinates divisible by size
+    :return: [(xll, yll), (xul, yul), (xur, yur), (xlr, ylr)]
+    """
+
+    if isinstance(xy, tuple):
+        x, y = xy
+    elif isinstance(xy, str):
+        x, y = int(xy.split('_')[0]), int(xy.split('_')[1])
+    else:
+        raise TypeError('provide eiter a tuple or a string x_y')
+
+    xll = int((x // size) * size)
+    yll = int((y // size) * size)
+
+    if vertices:
+        return [(xll, yll), (xll, yll+size), (xll+size, yll+size), (xll+size, yll)]
+    elif ll_string:
+        return '{:0=6}_{:0=6}'.format(xll, yll)
+    else:
+        return None
+
+
 def kh_id(xy):
     # identify km hok in which point (*rdx*,*rdy*) resides as XXXYYY where
     # XXX = X-coord rounded down to thousands
@@ -215,8 +239,8 @@ def get_bins(soortgroep):
 
 def get_ndff_full():
     # function to return the full NDFF table
-    return pd.read_csv(os.path.join(r'\\wur\dfs-root\PROJECTS\eval_nnn_wenr\b_prepared_data\NDFF_extract',
-                                    'ndff_b2_all_v2.csv'), comment='#')
+    return pd.read_csv(os.path.join(r'c:\apps\temp_geodata\ndff\ndff_b2_all_v2.csv'), comment='#',
+                       memory_map=True, sep=',')
 
 
 def get_soortgroep_afkorting(soortgroep):
